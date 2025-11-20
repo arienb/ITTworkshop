@@ -16,33 +16,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/keycloak-js@latest/dist/keycloak.min.js"></script>
   <script>
-    const keycloak = new Keycloak({
-      url: "http://localhost:8080/",
-      realm: "myrealm",
-      clientId: "simple-web"
-    });
 
-    keycloak.init({ onLoad: 'check-sso' }).then(authenticated => {
-      if (authenticated) {
-        const roles = keycloak.tokenParsed?.realm_access?.roles || [];
-        const username = keycloak.tokenParsed?.preferred_username || "gebruiker";
-
-        document.getElementById("loginBtn").style.display = "none";
-        document.getElementById("logoutBtn").style.display = "inline";
-        document.getElementById("welcome").innerText = `Hey, ${username}`;
-
-        if (roles.includes("adminRole")) {
-          window.location.href = "admin.html";
-        } else if (roles.includes("secret")) {
-          window.location.href = "secret.html";
-        } else {
-          window.location.href = "welcome.html";
-        }
-      }
-    });
-
-    document.getElementById("loginBtn").onclick = () => keycloak.login();
-    document.getElementById("logoutBtn").onclick = () => keycloak.logout({ redirectUri: 'http://localhost:5500/index.html' });
   </script>
 </body>
 </html>
