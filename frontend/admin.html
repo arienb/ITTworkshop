@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Panel</title>
+  <link rel="stylesheet" href="style/main.css">
+</head>
+<body>
+  <h1>Admin Panel</h1>
+  <div class="admin-container" id="adminControls" style="display:none;">
+    <div class="admin-box">
+      <h2>Create user</h2>
+      <input type="text" id="newUsername" placeholder="Username">
+      <input type="password" id="newPassword" placeholder="Password">
+      <button id="createUserBtn" onclick="createUser()">Create user</button>
+    </div>
+
+    <div class="admin-box">
+      <h2>Delete user</h2>
+      <input type="text" id="deleteUsername" placeholder="Username">
+      <button id="deleteUserBtn" onclick="deleteUser()">Delete user</button>
+    </div>
+
+    <div class="admin-box">
+      <h2>All users</h2>
+      <ul id="userList"></ul>
+    </div>
+  </div>
+  <div style="text-align: center; margin-top: 40px;">
+    <button id="logoutBtn" onclick="logout()">Logout</button>
+    </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/keycloak-js@latest/dist/keycloak.min.js"></script>
+  <script>
+    const keycloak = new Keycloak({
+      url: "http://localhost:8080/",
+      realm: "myrealm",
+      clientId: "simple-web"
+    });
+
+    let accessToken = "";
+
+    keycloak.init({ onLoad: 'login-required' }).then(authenticated => {
+      if (authenticated) {
+        const roles = keycloak.tokenParsed?.realm_access?.roles || [];
+        if (roles.includes("adminRole")) {
+          accessToken = keycloak.token;
+          document.getElementById("adminControls").style.display = "flex";
+          listUsers();
+        }
+      }
+    });
+
+    function logout() {
+      keycloak.logout({ redirectUri: 'http://127.0.0.1:5500/frontend/index.html' });
+    }
+
+    function createUser() {
+      const username = document.getElementById("newUsername").value;
+      const password = document.getElementById("newPassword").value;
+
+      fetch("http://localhost:8080/admin/realms/myrealm/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          username: username,
+          enabled: true,
+          credentials: [{
+            type: "password",
+            value: password,
+            temporary: false
+          }]
+        })
+      }).then(res => {
+        if (res.ok) {
+          alert("User created");
+          listUsers();
+        } else {
+          alert("Error creating user");
+        }
+      });
+    }
+
+    function deleteUser() {
+      const username = document.getElementById("deleteUsername").value;
+
+      fetch(`http://localhost:8080/admin/realms/myrealm/users?username=${username}&exact=true`, {
+        headers: { "Authorization": `Bearer ${accessToken}` }
+      })
+      .then(res => res.json())
+      .then(users => {
+        if (users.length === 0) return alert("User not found");
+        const userId = users[0].id;
+
+        fetch(`http://localhost:8080/admin/realms/myrealm/users/${userId}`, {
+          method: "DELETE",
+          headers: { "Authorization": `Bearer ${accessToken}` }
+        }).then(res => {
+          if (res.ok) {
+            alert("User deleted");
+            listUsers();
+          } else {
+            alert("Deletion failed");
+          }
+        });
+      });
+    }
+
+    function listUsers() {
+      fetch("http://localhost:8080/admin/realms/myrealm/users", {
+        headers: { "Authorization": `Bearer ${accessToken}` }
+      })
+      .then(res => res.json())
+      .then(users => {
+        const list = document.getElementById("userList");
+        list.innerHTML = "";
+        users.forEach(user => {
+          const li = document.createElement("li");
+          li.textContent = user.username;
+          list.appendChild(li);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
